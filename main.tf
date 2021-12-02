@@ -108,9 +108,11 @@ resource "azurerm_kubernetes_cluster" "aks1" {
   dns_prefix          = "aks1"
 
   default_node_pool {
-    name       = "default"
-    node_count = 1
-    vm_size    = "Standard_B2s"
+    name                = "default"
+    min_count           = 1
+    max_count           = 2
+    vm_size             = "Standard_B2s"
+    enable_auto_scaling = true
   }
 
   identity {
@@ -126,6 +128,13 @@ resource "azurerm_container_registry" "acr" {
   sku                 = "Basic"
 }
 
+# Allow AKS to pull images from ACR
+resource "azurerm_role_assignment" "aks_to_acr_role" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_kubernetes_cluster.aks1.kubelet_identity[0].object_id
+}
+
 resource "azurerm_mariadb_server" "dbsrv" {
   name                = "mskepamdiplomadb"
   location            = azurerm_resource_group.rg.location
@@ -137,10 +146,10 @@ resource "azurerm_mariadb_server" "dbsrv" {
   backup_retention_days        = 7
   geo_redundant_backup_enabled = false
 
-  administrator_login           = "nhltop"
-  administrator_login_password  = var.DB_PASSWORD
-  version                       = "10.3"
-  ssl_enforcement_enabled       = false
+  administrator_login          = "nhltop"
+  administrator_login_password = var.DB_PASSWORD
+  version                      = "10.3"
+  ssl_enforcement_enabled      = false
 }
 
 resource "azurerm_mariadb_database" "dbprod" {
